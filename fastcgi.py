@@ -52,7 +52,7 @@ class Record:  # Abstract
 	
 	@staticmethod
 	def read_from_stream(inp: io.BufferedIOBase) -> Record|None:
-		def recvall(n: int) -> bytes:
+		def read_exact(n: int) -> bytes:
 			if n < 0:
 				raise ValueError("Negative read length")
 			segs: list[bytes] = []
@@ -67,12 +67,12 @@ class Record:  # Abstract
 		temp: bytes = inp.read(struct.calcsize(Record._HEADER_FORMAT))
 		if len(temp) == 0:
 			return None
-		header: bytes = temp + recvall(struct.calcsize(Record._HEADER_FORMAT) - len(temp))
+		header: bytes = temp + read_exact(struct.calcsize(Record._HEADER_FORMAT) - len(temp))
 		version, type, reqid, contentlen, padlen = struct.unpack(Record._HEADER_FORMAT, header)
 		if version != Record._VERSION:
 			raise ValueError("Unknown record version")
-		content: bytes = recvall(contentlen)
-		recvall(padlen)
+		content: bytes = read_exact(contentlen)
+		read_exact(padlen)
 		
 		match type:
 			case BeginRequestRecord   .TYPE:  return BeginRequestRecord   .parse_content(reqid, content, padlen)
