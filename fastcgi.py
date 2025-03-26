@@ -77,13 +77,9 @@ class Record:  # Abstract
 	
 	
 	def __init__(self, reqid: int, padlen: int):
-		if reqid >> 16 != 0:
-			raise ValueError("Request ID too large")
-		self._request_id = reqid
+		self._request_id = _check_bit_width(reqid, 16, "Request ID too large")
 		
-		if padlen >> 8 != 0:
-			raise ValueError("Padding length too large")
-		self._padding_length = padlen
+		self._padding_length = _check_bit_width(padlen, 8, "Padding length too large")
 	
 	
 	def get_type(self) -> int:
@@ -100,13 +96,10 @@ class Record:  # Abstract
 	
 	
 	def to_bytes(self) -> bytes:
-		type: int = self.get_type()
-		if type >> 8 != 0:
-			raise ValueError("Type too large")
+		type: int = _check_bit_width(self.get_type(), 8, "Type too large")
 		
 		content: bytes = self.get_content()
-		if len(content) >> 16 != 0:
-			raise ValueError("Content too long")
+		_check_bit_width(len(content), 16, "Content too long")
 		
 		return struct.pack(Record._HEADER_FORMAT, Record._VERSION, type, self._request_id, len(content), self._padding_length) \
 			+ content + (b"\0" * self._padding_length)
@@ -230,9 +223,7 @@ class EndRequestRecord(Record):
 		if reqid == 0:
 			raise ValueError("Invalid request ID")
 		super().__init__(reqid, padlen)
-		if appstat >> 32 != 0:
-			raise ValueError("Application status too large")
-		self._application_status = appstat
+		self._application_status = _check_bit_width(appstat, 32, "Application status too large")
 		self._protocol_status = protostat
 	
 	
@@ -265,8 +256,7 @@ class _SimpleRecord(Record):  # Abstract
 	
 	def __init__(self, reqid: int, content: bytes, padlen: int):
 		super().__init__(reqid, padlen)
-		if len(content) >> 16 != 0:
-			raise ValueError("Content too long")
+		_check_bit_width(len(content), 16, "Content too long")
 		self._content = content
 	
 	def get_content(self) -> bytes:
@@ -432,9 +422,7 @@ class UnknownTypeRecord(Record):
 	
 	def __init__(self, unknowntype: int, padlen: int = 0):
 		super().__init__(0, padlen)
-		if unknowntype >> 8 != 0:
-			raise ValueError("Type too large")
-		self._unknown_type = unknowntype
+		self._unknown_type = _check_bit_width(unknowntype, 8, "Type too large")
 	
 	
 	def get_unknown_type(self) -> int:
@@ -455,9 +443,7 @@ class CustomRecord(_SimpleRecord):
 	_type: int
 	
 	def __init__(self, type: int, reqid: int, content: bytes, padlen: int = 0):
-		if type >> 8 != 0:
-			raise ValueError("Type too large")
-		self._type = type
+		self._type = _check_bit_width(type, 8, "Type too large")
 		super().__init__(reqid, content, padlen)
 	
 	def get_type(self) -> int:
@@ -504,3 +490,12 @@ def dict_to_name_values(d: dict[str,str]) -> bytes:
 		segs.append(keyb)
 		segs.append(valb)
 	return b"".join(segs)
+
+
+
+# ---- Utilities ----
+
+def _check_bit_width(val: int, width: int, errmsg: str) -> int:
+	if val >> width != 0:
+		raise ValueError(errmsg)
+	return val
