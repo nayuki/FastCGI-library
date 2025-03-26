@@ -167,12 +167,12 @@ class BeginRequestRecord(Record):
 	
 	
 	class Role(enum.Enum):
-		RESPONDER = 1
-		AUTHORIZER = 2
-		FILTER = 3
+		RESPONDER: int = 1
+		AUTHORIZER: int = 2
+		FILTER: int = 3
 	
 	class Flag(enum.Enum):
-		KEEP_CONN = 1
+		KEEP_CONN: int = 1
 
 
 
@@ -254,10 +254,10 @@ class EndRequestRecord(Record):
 	
 	
 	class ProtocolStatus(enum.Enum):
-		REQUEST_COMPLETE = 0
-		CANT_MPX_CONN = 1
-		OVERLOADED = 2
-		UNKNOWN_ROLE = 3
+		REQUEST_COMPLETE: int = 0
+		CANT_MPX_CONN: int = 1
+		OVERLOADED: int = 2
+		UNKNOWN_ROLE: int = 3
 
 
 
