@@ -77,9 +77,9 @@ class Record:  # Abstract
 	
 	
 	def __init__(self, reqid: int, padlen: int):
-		self._request_id = _check_bit_width(reqid, 16, "Request ID too large")
+		self._request_id = _check_bit_width(reqid, 16, "Request ID out of range")
 		
-		self._padding_length = _check_bit_width(padlen, 8, "Padding length too large")
+		self._padding_length = _check_bit_width(padlen, 8, "Padding length out of range")
 	
 	
 	def get_type(self) -> int:
@@ -96,7 +96,7 @@ class Record:  # Abstract
 	
 	
 	def to_bytes(self) -> bytes:
-		type: int = _check_bit_width(self.get_type(), 8, "Type too large")
+		type: int = _check_bit_width(self.get_type(), 8, "Type out of range")
 		
 		content: bytes = self.get_content()
 		_check_bit_width(len(content), 16, "Content too long")
@@ -223,7 +223,7 @@ class EndRequestRecord(Record):
 		if reqid == 0:
 			raise ValueError("Invalid request ID")
 		super().__init__(reqid, padlen)
-		self._application_status = _check_bit_width(appstat, 32, "Application status too large")
+		self._application_status = _check_bit_width(appstat, 32, "Application status out of range")
 		self._protocol_status = protostat
 	
 	
@@ -422,7 +422,7 @@ class UnknownTypeRecord(Record):
 	
 	def __init__(self, unknowntype: int, padlen: int = 0):
 		super().__init__(0, padlen)
-		self._unknown_type = _check_bit_width(unknowntype, 8, "Type too large")
+		self._unknown_type = _check_bit_width(unknowntype, 8, "Type out of range")
 	
 	
 	def get_unknown_type(self) -> int:
@@ -443,7 +443,7 @@ class CustomRecord(_SimpleRecord):
 	_type: int
 	
 	def __init__(self, type: int, reqid: int, content: bytes, padlen: int = 0):
-		self._type = _check_bit_width(type, 8, "Type too large")
+		self._type = _check_bit_width(type, 8, "Type out of range")
 		super().__init__(reqid, content, padlen)
 	
 	def get_type(self) -> int:
