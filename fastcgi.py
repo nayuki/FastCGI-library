@@ -25,7 +25,7 @@ from __future__ import annotations
 import enum, io, socket, struct
 
 
-# ---- Record class hierarchy ----
+# ---- Abstract record classes ----
 
 class Record:  # Abstract
 	
@@ -121,6 +121,39 @@ class Record:  # Abstract
 	
 	def __eq__(self, other: object) -> bool:
 		return type(self) == type(other) and self.__dict__ == other.__dict__
+
+
+
+class _SimpleRecord(Record):  # Abstract
+	_content: bytes
+	
+	def __init__(self, reqid: int, content: bytes, padlen: int):
+		super().__init__(reqid, padlen)
+		_check_bit_width(len(content), 16, "Content too long")
+		self._content = content
+	
+	def get_content(self) -> bytes:
+		return self._content
+	
+	def __repr__(self) -> str:
+		return f"{type(self).__name__}(reqid={self._request_id}, contentlen={len(self._content)}, padlen={self._padding_length})"
+
+
+
+# ---- Concrete record classes ----
+
+class CustomRecord(_SimpleRecord):
+	_type: int
+	
+	def __init__(self, type: int, reqid: int, content: bytes, padlen: int = 0):
+		self._type = _check_bit_width(type, 8, "Type out of range")
+		super().__init__(reqid, content, padlen)
+	
+	def get_type(self) -> int:
+		return self._type
+	
+	def __repr__(self) -> str:
+		return f"CustomRecord(type={self._type}, reqid={self._request_id}, contentlen={len(self._content)}, padlen={self._padding_length})"
 
 
 
@@ -262,22 +295,6 @@ class EndRequestRecord(Record):
 		CANT_MPX_CONN: int = 1
 		OVERLOADED: int = 2
 		UNKNOWN_ROLE: int = 3
-
-
-
-class _SimpleRecord(Record):  # Abstract
-	_content: bytes
-	
-	def __init__(self, reqid: int, content: bytes, padlen: int):
-		super().__init__(reqid, padlen)
-		_check_bit_width(len(content), 16, "Content too long")
-		self._content = content
-	
-	def get_content(self) -> bytes:
-		return self._content
-	
-	def __repr__(self) -> str:
-		return f"{type(self).__name__}(reqid={self._request_id}, contentlen={len(self._content)}, padlen={self._padding_length})"
 
 
 
@@ -450,21 +467,6 @@ class UnknownTypeRecord(Record):
 	
 	def __repr__(self) -> str:
 		return f"UnknownTypeRecord(reqid={self._request_id}, unknowntype={self._unknown_type}, padlen={self._padding_length})"
-
-
-
-class CustomRecord(_SimpleRecord):
-	_type: int
-	
-	def __init__(self, type: int, reqid: int, content: bytes, padlen: int = 0):
-		self._type = _check_bit_width(type, 8, "Type out of range")
-		super().__init__(reqid, content, padlen)
-	
-	def get_type(self) -> int:
-		return self._type
-	
-	def __repr__(self) -> str:
-		return f"CustomRecord(type={self._type}, reqid={self._request_id}, contentlen={len(self._content)}, padlen={self._padding_length})"
 
 
 
