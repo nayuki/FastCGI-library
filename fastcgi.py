@@ -121,6 +121,7 @@ class BeginRequestRecord(Record):
 	
 	TYPE: int = 1
 	_FORMAT: str = ">HB5x"
+	_FLAG_KEEP_CONN: int = 1 << 0
 	
 	
 	@staticmethod
@@ -132,47 +133,45 @@ class BeginRequestRecord(Record):
 				break
 		else:
 			raise ValueError(f"Unrecognized role: {roleint}")
-		flags: set[BeginRequestRecord.Flag] = set(
-			member1 for member1 in BeginRequestRecord.Flag
-			if flagsint & member1.value != 0)
-		return BeginRequestRecord(reqid, role, flags, padlen)
+		keepconn: bool = flagsint & BeginRequestRecord._FLAG_KEEP_CONN != 0
+		flagsint &= ~BeginRequestRecord._FLAG_KEEP_CONN
+		if flagsint != 0:
+			raise ValueError("Unrecognized flag")
+		return BeginRequestRecord(reqid, role, keepconn, padlen)
 	
 	
 	_role: BeginRequestRecord.Role
-	_flags: set[BeginRequestRecord.Flag]
+	_keep_conn: bool
 	
 	
-	def __init__(self, reqid: int, role: BeginRequestRecord.Role, flags: set[BeginRequestRecord.Flag], padlen: int = 0):
+	def __init__(self, reqid: int, role: BeginRequestRecord.Role, keepconn: bool, padlen: int = 0):
 		if reqid == 0:
 			raise ValueError("Invalid request ID")
 		super().__init__(reqid, padlen)
 		self._role = role
-		self._flags = set(flags)
+		self._keep_conn = keepconn
 	
 	
 	def get_role(self) -> BeginRequestRecord.Role:
 		return self._role
 	
-	def get_flags(self) -> set[BeginRequestRecord.Flag]:
-		return set(self._flags)
+	def get_keep_conn(self) -> bool:
+		return self._keep_conn
 	
 	def get_type(self) -> int:
 		return BeginRequestRecord.TYPE
 	
 	def get_content(self) -> bytes:
-		return struct.pack(BeginRequestRecord._FORMAT, self._role.value, sum(x.value for x in self._flags))
+		return struct.pack(BeginRequestRecord._FORMAT, self._role.value, (BeginRequestRecord._FLAG_KEEP_CONN if self._keep_conn else 0))
 	
 	def __repr__(self) -> str:
-		return f"BeginRequestRecord(reqid={self._request_id}, role={self._role}, flags={self._flags}, padlen={self._padding_length})"
+		return f"BeginRequestRecord(reqid={self._request_id}, role={self._role}, keepconn={self._keep_conn}, padlen={self._padding_length})"
 	
 	
 	class Role(enum.Enum):
 		RESPONDER: int = 1
 		AUTHORIZER: int = 2
 		FILTER: int = 3
-	
-	class Flag(enum.Enum):
-		KEEP_CONN: int = 1
 
 
 
