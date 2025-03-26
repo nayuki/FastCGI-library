@@ -97,6 +97,32 @@ class RecordTest(unittest.TestCase):
 			self.assertRaises(ValueError, lambda: CustomRecord(0, reqid, b""))
 	
 	
+	def test_construct_padding_length(self) -> None:
+		CASES: list[int] = [
+			0,
+			1,
+			10,
+			254,
+			255,
+			random.randrange(256),
+			random.randrange(256),
+			random.randrange(256),
+		]
+		for padlen in CASES:
+			BeginRequestRecord(1, BeginRequestRecord.Role.RESPONDER, False, padlen)
+			AbortRequestRecord(1, padlen)
+			EndRequestRecord(1, 0, EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE, padlen)
+			ParamsRecord(1, b"", padlen)
+			StdinRecord(1, b"", padlen)
+			StdoutRecord(1, b"", padlen)
+			StderrRecord(1, b"", padlen)
+			DataRecord(1, b"", padlen)
+			GetValuesRecord(set(), padlen),
+			GetValuesResultRecord({}, padlen),
+			UnknownTypeRecord(0, padlen),
+			CustomRecord(0, 1, b"", padlen)
+	
+	
 	def test_construct_padding_length_out_of_range(self) -> None:
 		CASES: list[int] = [
 			-99,
