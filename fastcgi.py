@@ -432,8 +432,8 @@ class UnknownTypeRecord(Record):
 	
 	def __init__(self, unknowntype: int, padlen: int = 0):
 		super().__init__(0, padlen)
-		if unknowntype >> 32 != 0:
-			raise ValueError("Application status too large")
+		if unknowntype >> 8 != 0:
+			raise ValueError("Type too large")
 		self._unknown_type = unknowntype
 	
 	
