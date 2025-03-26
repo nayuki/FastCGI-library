@@ -78,7 +78,6 @@ class Record:  # Abstract
 	
 	def __init__(self, reqid: int, padlen: int):
 		self._request_id = _check_bit_width(reqid, 16, "Request ID out of range")
-		
 		self._padding_length = _check_bit_width(padlen, 8, "Padding length out of range")
 	
 	
@@ -97,10 +96,8 @@ class Record:  # Abstract
 	
 	def to_bytes(self) -> bytes:
 		type: int = _check_bit_width(self.get_type(), 8, "Type out of range")
-		
 		content: bytes = self.get_content()
 		_check_bit_width(len(content), 16, "Content too long")
-		
 		return struct.pack(Record._HEADER_FORMAT, Record._VERSION, type, self._request_id, len(content), self._padding_length) \
 			+ content + (b"\0" * self._padding_length)
 	
