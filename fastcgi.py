@@ -349,19 +349,19 @@ class GetValuesRecord(Record):
 	
 	@staticmethod
 	def parse_content(reqid: int, content: bytes, padlen: int) -> GetValuesRecord:
+		if reqid != 0:
+			raise ValueError("Invalid request ID")
 		pairs: dict[str,str] = name_values_to_dict(content)
 		if any(v != "" for v in pairs.values()):
 			raise ValueError("Non-empty value")
-		return GetValuesRecord(reqid, set(pairs.keys()), padlen)
+		return GetValuesRecord(set(pairs.keys()), padlen)
 	
 	
 	_names: set[str]
 	
 	
-	def __init__(self, reqid: int, names: set[str], padlen: int = 0):
-		if reqid != 0:
-			raise ValueError("Invalid request ID")
-		super().__init__(reqid, padlen)
+	def __init__(self, names: set[str], padlen: int = 0):
+		super().__init__(0, padlen)
 		self._names = set(names)
 	
 	
@@ -386,16 +386,16 @@ class GetValuesResultRecord(Record):
 	
 	@staticmethod
 	def parse_content(reqid: int, content: bytes, padlen: int) -> GetValuesResultRecord:
-		return GetValuesResultRecord(reqid, name_values_to_dict(content), padlen)
+		if reqid != 0:
+			raise ValueError("Invalid request ID")
+		return GetValuesResultRecord(name_values_to_dict(content), padlen)
 	
 	
 	_pairs: dict[str,str]
 	
 	
-	def __init__(self, reqid: int, pairs: dict[str,str], padlen: int = 0):
-		if reqid != 0:
-			raise ValueError("Invalid request ID")
-		super().__init__(reqid, padlen)
+	def __init__(self, pairs: dict[str,str], padlen: int = 0):
+		super().__init__(0, padlen)
 		self._pairs = dict(pairs)
 	
 	
@@ -421,17 +421,17 @@ class UnknownTypeRecord(Record):
 	
 	@staticmethod
 	def parse_content(reqid: int, content: bytes, padlen: int) -> UnknownTypeRecord:
+		if reqid != 0:
+			raise ValueError("Invalid request ID")
 		unknowntype, = struct.unpack(UnknownTypeRecord._FORMAT, content)
-		return UnknownTypeRecord(reqid, unknowntype, padlen)
+		return UnknownTypeRecord(unknowntype, padlen)
 	
 	
 	_unknown_type: int
 	
 	
-	def __init__(self, reqid: int, unknowntype: int, padlen: int = 0):
-		if reqid != 0:
-			raise ValueError("Invalid request ID")
-		super().__init__(reqid, padlen)
+	def __init__(self, unknowntype: int, padlen: int = 0):
+		super().__init__(0, padlen)
 		if unknowntype >> 32 != 0:
 			raise ValueError("Application status too large")
 		self._unknown_type = unknowntype
