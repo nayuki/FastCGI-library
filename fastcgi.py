@@ -104,6 +104,10 @@ class Record:  # Abstract
 	
 	def send_to_socket(self, sock: socket.socket) -> None:
 		sock.sendall(self.to_bytes())
+	
+	
+	def __eq__(self, other: object) -> bool:
+		return type(self) == type(other) and self.__dict__ == other.__dict__
 
 
 
