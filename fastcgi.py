@@ -22,7 +22,7 @@
 # 
 
 from __future__ import annotations
-import enum, socket, struct
+import enum, io, socket, struct
 
 
 # ---- Record class hierarchy ----
@@ -35,19 +35,36 @@ class Record:  # Abstract
 	
 	@staticmethod
 	def read_from_socket(sock: socket.socket) -> Record|None:
+		class Adapter(io.BufferedIOBase):
+			def read(self, size: int|None = -1) -> bytes:
+				if size is None:
+					size = -1
+				segs: list[bytes] = []
+				while size != 0:
+					b: bytes = sock.recv(size if (size > 0) else 1024)
+					if len(b) == 0:
+						break
+					segs.append(b)
+					size -= len(b)
+				return b"".join(segs)
+		return Record.read_from_stream(Adapter())
+	
+	
+	@staticmethod
+	def read_from_stream(inp: io.BufferedIOBase) -> Record|None:
 		def recvall(n: int) -> bytes:
 			if n < 0:
 				raise ValueError("Negative read length")
 			segs: list[bytes] = []
 			while n > 0:
-				b: bytes = sock.recv(n)
+				b: bytes = inp.read(n)
 				if len(b) == 0:
 					raise EOFError()
 				segs.append(b)
 				n -= len(b)
 			return b"".join(segs)
 		
-		temp: bytes = sock.recv(struct.calcsize(Record._HEADER_FORMAT))
+		temp: bytes = inp.read(struct.calcsize(Record._HEADER_FORMAT))
 		if len(temp) == 0:
 			return None
 		header: bytes = temp + recvall(struct.calcsize(Record._HEADER_FORMAT) - len(temp))
