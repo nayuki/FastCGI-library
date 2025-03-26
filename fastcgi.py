@@ -55,14 +55,10 @@ class Record:  # Abstract
 		def read_exact(n: int) -> bytes:
 			if n < 0:
 				raise ValueError("Negative read length")
-			segs: list[bytes] = []
-			while n > 0:
-				b: bytes = inp.read(n)
-				if len(b) == 0:
-					raise EOFError()
-				segs.append(b)
-				n -= len(b)
-			return b"".join(segs)
+			result: bytes = inp.read(n)
+			if len(result) < n:
+				raise EOFError()
+			return result
 		
 		temp: bytes = inp.read(struct.calcsize(Record._HEADER_FORMAT))
 		if len(temp) == 0:
