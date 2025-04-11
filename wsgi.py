@@ -22,7 +22,7 @@
 # 
 
 from __future__ import annotations
-import io, os, pathlib, socket
+import collections, io, os, pathlib, socket, threading
 from typing import Callable, Iterable
 import fastcgi
 
@@ -36,6 +36,7 @@ class WsgiServer:
 	
 	_application: _ApplicationType
 	_server_socket: socket.socket
+	_executor: _ThreadPoolExecutor
 	
 	
 	def __init__(self, app: _ApplicationType, bindaddr: str, umask: int):
@@ -49,18 +50,21 @@ class WsgiServer:
 		finally:
 			os.umask(oldmask)
 		self._server_socket.listen()
+		self._executor = _ThreadPoolExecutor()
 	
 	
 	def run(self) -> None:
 		try:
 			while True:
 				sock, _ = self._server_socket.accept()
-				self._handle_client_socket(sock)
+				def make_task(sk: socket.socket) -> Callable[[],None]:
+					return lambda: self._task(sk)
+				self._executor.submit(make_task(sock))
 		finally:
 			self._server_socket.close()
 	
 	
-	def _handle_client_socket(self, sock: socket.socket) -> None:
+	def _task(self, sock: socket.socket) -> None:
 		try:
 			req: _Request|None = None
 			while True:
@@ -92,6 +96,67 @@ class WsgiServer:
 					raise ValueError("Unknown request record type")
 		finally:
 			sock.close()
+
+
+
+class _ThreadPoolExecutor:
+	
+	_min_workers: int
+	_max_workers: int
+	_lock: threading.Lock
+	_queue_nonempty: threading.Condition
+	_queue: collections.deque[Callable[[],None]|None]
+	_num_workers: int
+	_num_idle_workers: int
+	
+	
+	def __init__(self, minworkers: int|None = None, maxworkers: int = 100):
+		if minworkers is None:
+			minworkers = os.cpu_count()
+			if minworkers is None:
+				minworkers = 1
+		maxworkers = max(minworkers, maxworkers)
+		self._min_workers = minworkers
+		self._max_workers = maxworkers
+		
+		self._lock = threading.Lock()
+		self._queue_nonempty = threading.Condition(self._lock)
+		self._queue = collections.deque()
+		self._num_workers = 0
+		self._num_idle_workers = 0
+		for _ in range(minworkers):
+			threading.Thread(target=self._worker).start()
+			self._num_workers += 1
+	
+	
+	def _worker(self) -> None:
+		try:
+			while True:
+				with self._lock:
+					self._num_idle_workers += 1
+					try:
+						while len(self._queue) == 0:
+							self._queue_nonempty.wait()
+						item: Callable[[],None]|None = self._queue.popleft()
+					finally:
+						self._num_idle_workers -= 1
+				if item is None:
+					break
+				else:
+					item()
+		finally:
+			with self._lock:
+				self._num_workers -= 1
+	
+	
+	def submit(self, task: Callable[[],None]) -> None:
+		with self._lock:
+			self._queue.append(task)
+			if self._num_idle_workers > 0:
+				self._queue_nonempty.notify()
+			elif self._num_workers < self._max_workers:
+				threading.Thread(target=self._worker).start()
+				self._num_workers += 1
 
 
 
