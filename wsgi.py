@@ -96,8 +96,6 @@ class _Request:
 	# Mutable
 	_params: io.BytesIO
 	_stdin: io.BytesIO
-	_stdout: io.BytesIO
-	_stdout_length: int
 	
 	
 	def __init__(self, app: _ApplicationType, sock: socket.socket, rc: fastcgi.BeginRequestRecord):
@@ -107,8 +105,6 @@ class _Request:
 		self._keep_conn = rc.get_keep_conn()
 		self._params = io.BytesIO()
 		self._stdin = io.BytesIO()
-		self._stdout = io.BytesIO()
-		self._stdout_length = 0
 	
 	
 	def get_id(self) -> int:
@@ -146,8 +142,6 @@ class _Request:
 		try:
 			for b in result:
 				self._write_stdout(b)
-			if self._stdout_length > 0:
-				self._send(fastcgi.StdoutRecord(self._id, self._stdout.getvalue()))
 			self._send(fastcgi.StdoutRecord(self._id, b""))
 			self._send(fastcgi.EndRequestRecord(self._id, 0, fastcgi.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
 		finally:
@@ -164,19 +158,10 @@ class _Request:
 	def _write_stdout(self, b: bytes) -> None:
 		off: int = 0
 		while off < len(b):
-			if (self._stdout_length == 0) and (len(b) - off >= _Request._RECORD_MAX_DATA_LENGTH):
-				n: int = _Request._RECORD_MAX_DATA_LENGTH
-				self._send(fastcgi.StdoutRecord(self._id, b[off : off + n]))
-				off += n
-			else:
-				n = min(len(b) - off, _Request._RECORD_MAX_DATA_LENGTH - self._stdout_length)
-				self._stdout.write(b[off : off + n])
-				self._stdout_length += n
-				off += n
-				if self._stdout_length == _Request._RECORD_MAX_DATA_LENGTH:
-					self._send(fastcgi.StdoutRecord(self._id, self._stdout.getvalue()))
-					self._stdout = io.BytesIO()
-					self._stdout_length = 0
+			n: int = min(len(b) - off, _Request._RECORD_MAX_DATA_LENGTH)
+			self._send(fastcgi.StdoutRecord(self._id,
+				b if (n == len(b)) else b[off : off + n]))
+			off += n
 	
 	
 	def _send(self, rc: fastcgi.Record) -> None:
