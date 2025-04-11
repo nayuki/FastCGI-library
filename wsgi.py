@@ -144,7 +144,7 @@ class _Request:
 		
 		def start_response(status: str, respheaders: list[tuple[str,str]], excinfo: object = None) -> _WriteType:
 			headers: list[str] = ["HTTP/1.0 " + status] + [": ".join(kv) for kv in respheaders] + ["", ""]
-			self._write_stdout("\r\n".join(headers).encode("UTF-8"))
+			self._write_stdout("\r\n".join(headers).encode("ISO-8859-1"))
 			def write(b: bytes) -> None:
 				raise NotImplementedError()
 			return write

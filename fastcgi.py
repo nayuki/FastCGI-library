@@ -491,15 +491,15 @@ def name_values_to_dict(b: bytes) -> dict[str,str]:
 		i += lens[1]
 		if i > len(b):
 			raise EOFError()
-		result[keyb.decode("UTF-8")] = valb.decode("UTF-8")
+		result[keyb.decode("ISO-8859-1")] = valb.decode("ISO-8859-1")
 	return result
 
 
 def dict_to_name_values(d: dict[str,str]) -> bytes:
 	segs: list[bytes] = []
 	for (key, val) in d.items():
-		keyb: bytes = key.encode("UTF-8")
-		valb: bytes = val.encode("UTF-8")
+		keyb: bytes = key.encode("ISO-8859-1")
+		valb: bytes = val.encode("ISO-8859-1")
 		for n in (len(keyb), len(valb)):
 			segs.append(struct.pack(">B", n) if (n < 128)
 				else struct.pack(">I", n | (1 << 31)))
