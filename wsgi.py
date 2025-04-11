@@ -150,12 +150,16 @@ class _Request:
 			return write
 		
 		result: Iterable[bytes] = self._application(environ, start_response)
-		for b in result:
-			self._write_stdout(b)
-		if self._stdout_length > 0:
-			self._send(fastcgi.StdoutRecord(self._id, self._stdout.getvalue()))
-		self._send(fastcgi.StdoutRecord(self._id, b""))
-		self._send(fastcgi.EndRequestRecord(self._id, 0, fastcgi.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
+		try:
+			for b in result:
+				self._write_stdout(b)
+			if self._stdout_length > 0:
+				self._send(fastcgi.StdoutRecord(self._id, self._stdout.getvalue()))
+			self._send(fastcgi.StdoutRecord(self._id, b""))
+			self._send(fastcgi.EndRequestRecord(self._id, 0, fastcgi.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
+		finally:
+			if hasattr(result, "close"):
+				result.close()
 	
 	
 	def _write_stdout(self, b: bytes) -> None:
