@@ -77,9 +77,19 @@ class WsgiServer:
 					req = _Request(self._application, sock, rc)
 				elif (req is None) or (rc.get_request_id() != req.get_id()):
 					raise ValueError("Missing request")
+				elif isinstance(rc, fastcgi.ParamsRecord):
+					req._params.write(rc.get_content())
+				elif isinstance(rc, fastcgi.StdinRecord):
+					b: bytes = rc.get_content()
+					req._stdin.write(b)
+					if len(b) == 0:
+						req._process()
+						keepconn: bool = req._keep_conn
+						req = None
+						if not keepconn:
+							break
 				else:
-					if not req.handle_record(rc):
-						break
+					raise ValueError("Unknown request record type")
 		finally:
 			sock.close()
 
@@ -109,21 +119,6 @@ class _Request:
 	
 	def get_id(self) -> int:
 		return self._id
-	
-	
-	def handle_record(self, rc: fastcgi.Record) -> bool:
-		if isinstance(rc, fastcgi.ParamsRecord):
-			self._params.write(rc.get_content())
-			return True
-		elif isinstance(rc, fastcgi.StdinRecord):
-			b: bytes = rc.get_content()
-			self._stdin.write(b)
-			if len(b) == 0:
-				self._process()
-				return self._keep_conn
-			return True
-		else:
-			raise ValueError("Unknown request record type")
 	
 	
 	def _process(self) -> None:
