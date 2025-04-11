@@ -134,7 +134,7 @@ class _Request:
 		environ: dict[str,object] = {
 			"wsgi.version": (1, 0),
 			"wsgi.url_scheme": "http",
-			"wsgi.input": None,
+			"wsgi.input": io.BytesIO(self._stdin.getvalue()),
 			"wsgi.errors": io.StringIO(),
 			"wsgi.multithread": True,
 			"wsgi.multiprocess": False,
