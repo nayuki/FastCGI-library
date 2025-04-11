@@ -142,14 +142,7 @@ class _Request:
 		}
 		environ.update(fastcgi.name_values_to_dict(self._params.getvalue()))
 		
-		def start_response(status: str, respheaders: list[tuple[str,str]], excinfo: object = None) -> _WriteType:
-			headers: list[str] = ["HTTP/1.0 " + status] + [": ".join(kv) for kv in respheaders] + ["", ""]
-			self._write_stdout("\r\n".join(headers).encode("ISO-8859-1"))
-			def write(b: bytes) -> None:
-				raise NotImplementedError()
-			return write
-		
-		result: Iterable[bytes] = self._application(environ, start_response)
+		result: Iterable[bytes] = self._application(environ, self._start_response)
 		try:
 			for b in result:
 				self._write_stdout(b)
@@ -160,6 +153,12 @@ class _Request:
 		finally:
 			if hasattr(result, "close"):
 				result.close()
+	
+	
+	def _start_response(self, status: str, respheaders: list[tuple[str,str]], excinfo: object = None) -> _WriteType:
+		headers: list[str] = ["HTTP/1.0 " + status] + [": ".join(kv) for kv in respheaders] + ["", ""]
+		self._write_stdout("\r\n".join(headers).encode("ISO-8859-1"))
+		return self._write_stdout
 	
 	
 	def _write_stdout(self, b: bytes) -> None:
