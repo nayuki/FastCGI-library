@@ -127,9 +127,6 @@ class _ThreadPoolExecutor:
 		self._queue = collections.deque()
 		self._num_workers = 0
 		self._num_idle_workers = 0
-		for _ in range(minworkers):
-			threading.Thread(target=self._worker).start()
-			self._num_workers += 1
 		
 		self._cleanable = threading.Condition(self._lock)
 		threading.Thread(target=self._cleaner).start()
