@@ -94,6 +94,8 @@ class WsgiServer:
 							break
 				else:
 					raise ValueError("Unknown request record type")
+		except BrokenPipeError:
+			pass
 		finally:
 			sock.close()
 
