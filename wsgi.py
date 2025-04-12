@@ -22,7 +22,7 @@
 # 
 
 from __future__ import annotations
-import collections, io, os, pathlib, socket, threading
+import collections, io, os, pathlib, socket, threading, time
 from typing import Callable, Iterable
 import fastcgi
 
@@ -110,6 +110,7 @@ class _ThreadPoolExecutor:
 	_queue: collections.deque[Callable[[],None]|None]
 	_num_workers: int
 	_num_idle_workers: int
+	_cleanable: threading.Condition
 	
 	
 	def __init__(self, minworkers: int|None = None, maxworkers: int = 100):
@@ -129,6 +130,9 @@ class _ThreadPoolExecutor:
 		for _ in range(minworkers):
 			threading.Thread(target=self._worker).start()
 			self._num_workers += 1
+		
+		self._cleanable = threading.Condition(self._lock)
+		threading.Thread(target=self._cleaner).start()
 	
 	
 	def _worker(self) -> None:
@@ -136,6 +140,8 @@ class _ThreadPoolExecutor:
 			while True:
 				with self._lock:
 					self._num_idle_workers += 1
+					if self._num_workers > self._min_workers:
+						self._cleanable.notify()
 					try:
 						while len(self._queue) == 0:
 							self._queue_nonempty.wait()
@@ -159,6 +165,17 @@ class _ThreadPoolExecutor:
 			elif self._num_workers < self._max_workers:
 				threading.Thread(target=self._worker).start()
 				self._num_workers += 1
+	
+	
+	def _cleaner(self) -> None:
+		while True:
+			time.sleep(10)
+			with self._lock:
+				if (self._num_workers > self._min_workers) and (self._num_idle_workers > 0):
+					self._queue.append(None)
+					self._queue_nonempty.notify()
+				else:
+					self._cleanable.wait()
 
 
 
