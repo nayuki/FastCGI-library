@@ -57,47 +57,48 @@ class WsgiServer:
 		try:
 			while True:
 				sock, _ = self._server_socket.accept()
-				def make_task(sk: socket.socket) -> Callable[[],None]:
-					return lambda: self._task(sk)
-				self._executor.submit(make_task(sock))
+				self._executor.submit(self._make_task(sock))
 		finally:
 			self._server_socket.close()
 	
 	
-	def _task(self, sock: socket.socket) -> None:
-		try:
-			req: _Request|None = None
-			while True:
-				rc: fastcgi.Record|None = fastcgi.Record.read_from_socket(sock)
-				if rc is None:
-					if req is not None:
-						raise EOFError()
-					break
-				elif rc.get_request_id() == 0:
-					raise ValueError("Unknown management record type")
-				elif isinstance(rc, fastcgi.BeginRequestRecord):
-					if req is not None:
-						raise ValueError("Concurrent request")
-					req = _Request(self._application, sock, rc)
-				elif (req is None) or (rc.get_request_id() != req.get_id()):
-					raise ValueError("Missing request")
-				elif isinstance(rc, fastcgi.ParamsRecord):
-					req._params.write(rc.get_content())
-				elif isinstance(rc, fastcgi.StdinRecord):
-					b: bytes = rc.get_content()
-					req._stdin.write(b)
-					if len(b) == 0:
-						req._process()
-						keepconn: bool = req._keep_conn
-						req = None
-						if not keepconn:
-							break
-				else:
-					raise ValueError("Unknown request record type")
-		except BrokenPipeError:
-			pass
-		finally:
-			sock.close()
+	def _make_task(self, sock: socket.socket) -> Callable[[],None]:
+		def run() -> None:
+			try:
+				req: _Request|None = None
+				while True:
+					rc: fastcgi.Record|None = fastcgi.Record.read_from_socket(sock)
+					if rc is None:
+						if req is not None:
+							raise EOFError()
+						break
+					elif rc.get_request_id() == 0:
+						raise ValueError("Unknown management record type")
+					elif isinstance(rc, fastcgi.BeginRequestRecord):
+						if req is not None:
+							raise ValueError("Concurrent request")
+						req = _Request(self._application, sock, rc)
+					elif (req is None) or (rc.get_request_id() != req.get_id()):
+						raise ValueError("Missing request")
+					elif isinstance(rc, fastcgi.ParamsRecord):
+						req._params.write(rc.get_content())
+					elif isinstance(rc, fastcgi.StdinRecord):
+						b: bytes = rc.get_content()
+						req._stdin.write(b)
+						if len(b) == 0:
+							req._process()
+							keepconn: bool = req._keep_conn
+							req = None
+							if not keepconn:
+								break
+					else:
+						raise ValueError("Unknown request record type")
+			except BrokenPipeError:
+				pass
+			finally:
+				sock.close()
+		
+		return run
 
 
 
