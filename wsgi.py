@@ -203,7 +203,6 @@ class _Request:
 	def _process(self) -> None:
 		environ: dict[str,object] = {
 			"wsgi.version": (1, 0),
-			"wsgi.url_scheme": "http",
 			"wsgi.input": io.BytesIO(self._stdin.getvalue()),
 			"wsgi.errors": io.StringIO(),
 			"wsgi.multithread": True,
@@ -211,6 +210,7 @@ class _Request:
 			"wsgi.run_once": False,
 		}
 		environ.update(fastcgi.name_values_to_dict(self._params.getvalue()))
+		environ["wsgi.url_scheme"] = environ["REQUEST_SCHEME"]
 		
 		result: Iterable[bytes] = self._application(environ, self._start_response)
 		try:
