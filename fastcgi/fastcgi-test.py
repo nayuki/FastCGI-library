@@ -23,7 +23,7 @@
 
 from __future__ import annotations
 import io, random, unittest
-from fastcgi import *
+from record import *
 
 
 class RecordTest(unittest.TestCase):

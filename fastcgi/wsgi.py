@@ -24,7 +24,7 @@
 from __future__ import annotations
 import collections, io, os, pathlib, socket, threading, time
 from typing import Callable, Iterable
-from . import fastcgi
+from . import record
 
 
 _WriteType = Callable[[bytes],None]
@@ -66,22 +66,22 @@ class WsgiServer:
 				try:
 					req: _Request|None = None
 					while True:
-						rc: fastcgi.Record|None = fastcgi.Record.read_from_socket(sock)
+						rc: record.Record|None = record.Record.read_from_socket(sock)
 						if rc is None:
 							if req is not None:
 								raise EOFError()
 							break
 						elif rc.get_request_id() == 0:
 							raise ValueError("Unknown management record type")
-						elif isinstance(rc, fastcgi.BeginRequestRecord):
+						elif isinstance(rc, record.BeginRequestRecord):
 							if req is not None:
 								raise ValueError("Concurrent request")
 							req = _Request(self._application, sock, rc)
 						elif (req is None) or (rc.get_request_id() != req.get_id()):
 							raise ValueError("Missing request")
-						elif isinstance(rc, fastcgi.ParamsRecord):
+						elif isinstance(rc, record.ParamsRecord):
 							req._params.write(rc.get_content())
-						elif isinstance(rc, fastcgi.StdinRecord):
+						elif isinstance(rc, record.StdinRecord):
 							b: bytes = rc.get_content()
 							req._stdin.write(b)
 							if len(b) == 0:
@@ -187,7 +187,7 @@ class _Request:
 	_stdin: io.BytesIO
 	
 	
-	def __init__(self, app: _ApplicationType, sock: socket.socket, rc: fastcgi.BeginRequestRecord):
+	def __init__(self, app: _ApplicationType, sock: socket.socket, rc: record.BeginRequestRecord):
 		self._application = app
 		self._socket = sock
 		self._id = rc.get_request_id()
@@ -209,15 +209,15 @@ class _Request:
 			"wsgi.multiprocess": False,
 			"wsgi.run_once": False,
 		}
-		environ.update(fastcgi.name_values_to_dict(self._params.getvalue()))
+		environ.update(record.name_values_to_dict(self._params.getvalue()))
 		environ["wsgi.url_scheme"] = environ["REQUEST_SCHEME"]
 		
 		result: Iterable[bytes] = self._application(environ, self._start_response)
 		try:
 			for b in result:
 				self._write_stdout(b)
-			self._send(fastcgi.StdoutRecord(self._id, b""))
-			self._send(fastcgi.EndRequestRecord(self._id, 0, fastcgi.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
+			self._send(record.StdoutRecord(self._id, b""))
+			self._send(record.EndRequestRecord(self._id, 0, record.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
 		finally:
 			if hasattr(result, "close"):
 				result.close()
@@ -233,12 +233,12 @@ class _Request:
 		off: int = 0
 		while off < len(b):
 			n: int = min(len(b) - off, _Request._RECORD_MAX_DATA_LENGTH)
-			self._send(fastcgi.StdoutRecord(self._id,
+			self._send(record.StdoutRecord(self._id,
 				b if (n == len(b)) else b[off : off + n]))
 			off += n
 	
 	
-	def _send(self, rc: fastcgi.Record) -> None:
+	def _send(self, rc: record.Record) -> None:
 		rc.send_to_socket(self._socket)
 	
 	
