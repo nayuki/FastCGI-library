@@ -32,7 +32,7 @@ _StartResponseType = Callable[[str,list[tuple[str,str]]],_WriteType]
 _ApplicationType = Callable[[dict[str,object],_StartResponseType],Iterable[bytes]]
 
 
-class WsgiServer:
+class Server:
 	
 	_application: _ApplicationType
 	_server_socket: socket.socket
