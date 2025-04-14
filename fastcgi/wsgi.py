@@ -24,7 +24,7 @@
 from __future__ import annotations
 import collections, io, os, pathlib, socket, threading, time
 from typing import Callable, Iterable
-import fastcgi
+from . import fastcgi
 
 
 _WriteType = Callable[[bytes],None]
