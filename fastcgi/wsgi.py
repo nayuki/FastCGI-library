@@ -185,6 +185,8 @@ class _Request:
 	# Mutable
 	_params: io.BytesIO
 	_stdin: io.BytesIO
+	_headers: list[str]
+	_headers_written: bool
 	
 	
 	def __init__(self, app: _ApplicationType, sock: socket.socket, rc: record.BeginRequestRecord):
@@ -194,6 +196,8 @@ class _Request:
 		self._keep_conn = rc.get_keep_conn()
 		self._params = io.BytesIO()
 		self._stdin = io.BytesIO()
+		self._headers = []
+		self._headers_written = False
 	
 	
 	def get_id(self) -> int:
@@ -216,6 +220,7 @@ class _Request:
 		try:
 			for b in result:
 				self._write_stdout(b)
+			self._write_headers()
 			self._send(record.StdoutRecord(self._id, b""))
 			self._send(record.EndRequestRecord(self._id, 0, record.EndRequestRecord.ProtocolStatus.REQUEST_COMPLETE))
 		finally:
@@ -224,18 +229,33 @@ class _Request:
 	
 	
 	def _start_response(self, status: str, respheaders: list[tuple[str,str]], excinfo: object = None) -> _WriteType:
-		headers: list[str] = ["HTTP/1.0 " + status] + [": ".join(kv) for kv in respheaders] + ["", ""]
-		self._write_stdout("\r\n".join(headers).encode("ISO-8859-1"))
+		if self._headers_written:
+			raise ValueError("Headers already written")
+		if (len(self._headers) > 0) and (excinfo is None):
+			raise ValueError("Headers already set")
+		self._headers = ["HTTP/1.0 " + status] + [": ".join(kv) for kv in respheaders] + ["", ""]
 		return self._write_stdout
 	
 	
 	def _write_stdout(self, b: bytes) -> None:
 		off: int = 0
 		while off < len(b):
+			self._write_headers()
 			n: int = min(len(b) - off, _Request._RECORD_MAX_DATA_LENGTH)
 			self._send(record.StdoutRecord(self._id,
 				b if (n == len(b)) else b[off : off + n]))
 			off += n
+	
+	
+	def _write_headers(self) -> None:  # Idempotent
+		if self._headers_written:
+			return
+		elif len(self._headers) == 0:
+			raise ValueError("Headers not set")
+		else:
+			self._headers_written = True
+			self._write_stdout("\r\n".join(self._headers).encode("ISO-8859-1"))
+			self._headers = []
 	
 	
 	def _send(self, rc: record.Record) -> None:
