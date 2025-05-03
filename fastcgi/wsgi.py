@@ -205,9 +205,10 @@ class _Request:
 	
 	
 	def _process(self) -> None:
+		self._stdin.seek(0)
 		environ: dict[str,object] = {
 			"wsgi.version": (1, 0),
-			"wsgi.input": io.BytesIO(self._stdin.getvalue()),
+			"wsgi.input": self._stdin,
 			"wsgi.errors": io.StringIO(),
 			"wsgi.multithread": True,
 			"wsgi.multiprocess": False,
