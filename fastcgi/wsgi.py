@@ -39,7 +39,7 @@ class Server:
 	_executor: _ThreadPoolExecutor
 	
 	
-	def __init__(self, app: _ApplicationType, bindaddr: str, umask: int, listen_backlog: int = 1000):
+	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int, listen_backlog: int = 1000):
 		self._application = app
 		
 		pathlib.Path(bindaddr).unlink(True)
