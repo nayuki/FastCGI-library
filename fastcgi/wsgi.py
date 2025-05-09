@@ -39,7 +39,14 @@ class Server:
 	_executor: ThreadPoolExecutor
 	
 	
-	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int|None = None, listen_backlog: int = 1000, executor: ThreadPoolExecutor|None = None):
+	def __init__(self,
+			app: _ApplicationType,
+			bindaddr: str,
+			*,
+			umask: int|None = None,
+			listen_backlog: int = 1000,
+			executor: ThreadPoolExecutor|None = None):
+		
 		self._application = app
 		
 		pathlib.Path(bindaddr).unlink(True)
@@ -116,7 +123,10 @@ class ThreadPoolExecutor:
 	_cleanable: threading.Condition
 	
 	
-	def __init__(self, minworkers: int|None = None, maxworkers: int = 100):
+	def __init__(self,
+			minworkers: int|None = None,
+			maxworkers: int = 100):
+		
 		if minworkers is None:
 			minworkers = os.cpu_count()
 			if minworkers is None:
