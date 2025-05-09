@@ -39,16 +39,21 @@ class Server:
 	_executor: _ThreadPoolExecutor
 	
 	
-	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int, listen_backlog: int = 1000):
+	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int|None = None, listen_backlog: int = 1000):
 		self._application = app
 		
 		pathlib.Path(bindaddr).unlink(True)
 		self._server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-		oldmask: int = os.umask(umask)
-		try:
+		
+		if umask is None:
 			self._server_socket.bind(bindaddr)
-		finally:
-			os.umask(oldmask)
+		else:
+			oldmask: int = os.umask(umask)
+			try:
+				self._server_socket.bind(bindaddr)
+			finally:
+				os.umask(oldmask)
+		
 		self._server_socket.listen(listen_backlog)
 		self._executor = _ThreadPoolExecutor()
 	
