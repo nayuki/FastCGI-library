@@ -36,10 +36,10 @@ class Server:
 	
 	_application: _ApplicationType
 	_server_socket: socket.socket
-	_executor: _ThreadPoolExecutor
+	_executor: ThreadPoolExecutor
 	
 	
-	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int|None = None, listen_backlog: int = 1000):
+	def __init__(self, app: _ApplicationType, bindaddr: str, *, umask: int|None = None, listen_backlog: int = 1000, executor: ThreadPoolExecutor|None = None):
 		self._application = app
 		
 		pathlib.Path(bindaddr).unlink(True)
@@ -55,7 +55,7 @@ class Server:
 				os.umask(oldmask)
 		
 		self._server_socket.listen(listen_backlog)
-		self._executor = _ThreadPoolExecutor()
+		self._executor = ThreadPoolExecutor() if (executor is None) else executor
 	
 	
 	def run(self) -> None:
@@ -104,7 +104,7 @@ class Server:
 
 
 
-class _ThreadPoolExecutor:
+class ThreadPoolExecutor:
 	
 	_min_workers: int
 	_max_workers: int
